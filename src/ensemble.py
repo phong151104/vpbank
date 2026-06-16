@@ -4,7 +4,8 @@ import numpy as np
 import pandas as pd
 from scipy.stats import rankdata
 from sklearn.linear_model import LogisticRegression
-from sklearn.model_selection import cross_val_predict, StratifiedKFold
+from sklearn.model_selection import (cross_val_predict, StratifiedKFold,
+                                     StratifiedGroupKFold)
 
 from .metrics import summarize
 
@@ -24,23 +25,28 @@ def rank_average(oof_dict, names, weights=None):
     return agg / sum(weights)
 
 
-def stack_oof(oof_dict, names, y, seed=42):
-    """Stacking: LR (meta) học trên ma trận OOF proba. Trả OOF của stack."""
+def stack_oof(oof_dict, names, y, seed=42, groups=None):
+    """Stacking: LR (meta) học trên ma trận OOF proba. Trả OOF của stack.
+    groups != None -> StratifiedGroupKFold cho CV của meta (tránh rò rỉ profile)."""
     M = np.column_stack([oof_dict[n] for n in names])
     meta = LogisticRegression(max_iter=2000, class_weight="balanced")
-    skf = StratifiedKFold(5, shuffle=True, random_state=seed)
-    stack = cross_val_predict(meta, M, y, cv=skf, method="predict_proba")[:, 1]
+    if groups is None:
+        cv = StratifiedKFold(5, shuffle=True, random_state=seed)
+        stack = cross_val_predict(meta, M, y, cv=cv, method="predict_proba")[:, 1]
+    else:
+        cv = StratifiedGroupKFold(5, shuffle=True, random_state=seed)
+        stack = cross_val_predict(meta, M, y, cv=cv, method="predict_proba", groups=groups)[:, 1]
     return stack, meta
 
 
-def compare_ensembles(oof_dict, top_names, y):
+def compare_ensembles(oof_dict, top_names, y, groups=None):
     """So sánh: từng mô hình đơn, rank-average, stacking."""
     rows = []
     for n in top_names:
         s = summarize(y, oof_dict[n]); s["combo"] = n; rows.append(s)
     ra = rank_average(oof_dict, top_names)
     s = summarize(y, ra); s["combo"] = "Rank-Avg (" + "+".join(top_names) + ")"; rows.append(s)
-    st, _ = stack_oof(oof_dict, top_names, y)
+    st, _ = stack_oof(oof_dict, top_names, y, groups=groups)
     s = summarize(y, st); s["combo"] = "Stacking-LR"; rows.append(s)
     res = pd.DataFrame(rows).set_index("combo").sort_values("hits@20%", ascending=False)
     return res, ra, st

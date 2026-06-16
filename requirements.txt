@@ -1,4 +1,4 @@
-# VPINS AIA Challenge — môi trường mô hình hoá
+﻿# VPINS AIA Challenge — môi trường mô hình hoá
 # Python 3.10+ (đã chạy trên 3.13, Anaconda base)
 pandas>=2.0
 numpy>=1.24

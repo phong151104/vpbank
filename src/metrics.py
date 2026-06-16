@@ -35,6 +35,13 @@ def recall_at_k(y_true, y_score, frac=TOPK_FRAC, k=None):
     return float(y_true[idx].sum() / tot) if tot else 0.0
 
 
+def mean_hits_over_k(y_true, y_score, fracs=(0.15, 0.175, 0.20, 0.225, 0.25)):
+    """Trung bình hits@K qua một dải K (mặc định 15%..25%).
+
+    Tiêu chí chọn model/ensemble ỔN ĐỊNH hơn hits@20% đơn lẻ (vốn nhiễu ±std)."""
+    return float(np.mean([topk_hits(y_true, y_score, f) for f in fracs]))
+
+
 def summarize(y_true, y_score, frac=TOPK_FRAC):
     """Bảng tóm tắt: AUC, AP(PR-AUC), hits@K, recall@K, lift@K."""
     return {

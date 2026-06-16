@@ -80,3 +80,26 @@ def make_preprocessor(cols, use_target_encoding=True, scale=False):
         from sklearn.pipeline import Pipeline
         return Pipeline([("ct", ct), ("scale", StandardScaler())])
     return ct
+
+
+def encoded_layout(cols):
+    """Khớp THỨ TỰ output của make_preprocessor: [TE(HICARD) liên tục] + [phần còn lại rời rạc].
+
+    Trả (ordered_cols, discrete_mask). Dùng cho mutual_info_classif: vừa gán đúng tên cột
+    (ColumnTransformer ĐẢO thứ tự, đặt cột TargetEncoder lên đầu) vừa đánh dấu cột rời rạc."""
+    te_cols = [c for c in HICARD if c in cols]
+    rest = [c for c in cols if c not in te_cols]
+    ordered = te_cols + rest
+    mask = [False] * len(te_cols) + [True] * len(rest)
+    return ordered, mask
+
+
+def extra_flags(df):
+    """Đặc trưng flag thử nghiệm (P5, opt-in) — trả DataFrame cùng index với df.
+
+    Notebook chỉ ghép thêm nếu OOF (grouped) cải thiện."""
+    out = pd.DataFrame(index=df.index)
+    out["flag_so_hd_oto"]    = (df["68"] > 0).astype(int)                 # có >=1 HĐ ô tô
+    out["flag_da_dang_bh"]   = ((df[NUMBER] > 0).sum(axis=1) >= 3).astype(int)  # sở hữu >=3 loại BH
+    NAME.update({"flag_so_hd_oto": "Có HĐ ô tô (≥1)", "flag_da_dang_bh": "Sở hữu ≥3 loại BH"})
+    return out
