@@ -2,11 +2,34 @@
 __pycache__/
 *.py[cod]
 *.egg-info/
+*.so
+
+# Notebook
 .ipynb_checkpoints/
+
+# Môi trường ảo
+.venv/
+venv/
+env/
+.env
 
 # Auto-generated bởi CatBoost khi train
 catboost_info/
 
+# Artefact nặng, tái tạo được (vẫn GIỮ feature_set.json + *.csv để xem kết quả)
+outputs/*.parquet
+
+# IDE / editor
+.vscode/
+.idea/
+*.code-workspace
+
+# Cache công cụ
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
 # OS
 .DS_Store
 Thumbs.db
+desktop.ini

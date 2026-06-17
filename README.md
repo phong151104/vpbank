@@ -7,8 +7,8 @@ vọng nhất (**Nhiệm vụ 1**) và phân tích **vì sao** khách mua để 
 > test 4.000 khách (không nhãn). Tỉ lệ mua ~5,98% → **bài toán xếp hạng top-K mất cân bằng**
 > (đánh giá bằng `hits@20%` / `mean_hits_over_k`, không dùng accuracy).
 
-> 📄 **Báo cáo kỹ thuật chi tiết (từng bước):** [docs/SOLUTION.md](docs/SOLUTION.md)
-> · **Giải thích mô hình & insight chiến dịch (Nhiệm vụ 2):** [docs/MODEL_INSIGHTS.md](docs/MODEL_INSIGHTS.md)
+> 📄 **Báo cáo kỹ thuật chi tiết + giải thích mô hình & insight chiến dịch:**
+> [docs/SUBMISSION_REPORT.md](docs/SUBMISSION_REPORT.md) (kèm bản PDF).
 
 ## Luồng chính — 3 notebook
 
@@ -36,7 +36,7 @@ eda.ipynb  →  feature_engineering.ipynb  →  training.ipynb
 
 ```
 .
-├── eda.ipynb  feature_engineering.ipynb  training.ipynb   # luồng chính
+├── eda.ipynb  feature_engineering.ipynb  training.ipynb   # luồng chính (chạy trực tiếp)
 ├── data/                     # dữ liệu gốc: train_data.txt, test_data.txt
 ├── submission_800.txt                                     # KẾT QUẢ NỘP (800 ID)
 ├── requirements.txt  README.md  .gitignore
@@ -50,12 +50,7 @@ eda.ipynb  →  feature_engineering.ipynb  →  training.ipynb
 │   ├── tune.py               #   Optuna tuning (K-as-hyperparameter, grouped, early stopping)
 │   └── predict.py            #   refit toàn train → chấm test → top-800
 │
-├── builders/                 # generator sinh ra notebook (nguồn sự thật của .ipynb)
-│   ├── build_notebook.py         → eda.ipynb
-│   ├── build_fe_notebook.py      → feature_engineering.ipynb
-│   └── build_train_notebook.py   → training.ipynb
-│
-├── docs/                     # đề bài + mô tả thuộc tính (kèm bản dịch tiếng Việt)
+├── docs/                     # đề bài, mô tả thuộc tính, báo cáo nộp (SUBMISSION_REPORT.md/.pdf)
 ├── figures/                  # biểu đồ .png cho slide (EDA / FE / TR)
 └── outputs/                  # feature_set.json, *_fe.parquet, training_results.csv,
                               # feature_importance_full.csv, perf_vs_K.csv, test_scores.csv
@@ -73,12 +68,9 @@ pip install -r requirements.txt
 ## Chạy
 
 ```bash
-# Chạy notebook theo thứ tự (mở trong Jupyter/VS Code, Run All), hoặc:
+# Mở 3 notebook trong Jupyter/VS Code và Run All theo thứ tự, hoặc chạy headless:
 jupyter nbconvert --to notebook --execute --inplace feature_engineering.ipynb
 jupyter nbconvert --to notebook --execute --inplace training.ipynb
-
-# Regenerate notebook từ generator (chạy TỪ thư mục gốc; sẽ ghi đè .ipynb, mất output cũ):
-python builders/build_train_notebook.py
 ```
 
 ## Phương pháp (điểm nhấn)
@@ -106,6 +98,4 @@ python builders/build_train_notebook.py
 tuyến). Lift ~2,96× → kỳ vọng ~141 người mua trong 800 chọn (so với ~48 nếu ngẫu nhiên).
 
 > **Ghi chú trung thực:** `hits@20%=206` nên coi là **cận trên** (optimism do chọn feature trên
-> toàn train + chọn max trên 5 mô hình). **Đã đo bằng nested CV:** optimism ≈ vài điểm, nhưng ưu
-> thế của luồng dedupe **sống sót qua nested** (161.9 > 159.1) → cải thiện là thật. Số trên tập
-> nhãn ẩn vẫn sẽ thấp hơn ~vài điểm.
+> toàn train + chọn max trên 5 mô hình). Số trên tập nhãn ẩn vẫn sẽ thấp hơn ~vài điểm.
