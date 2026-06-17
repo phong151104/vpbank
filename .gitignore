@@ -1,0 +1,12 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.ipynb_checkpoints/
+
+# Auto-generated bởi CatBoost khi train
+catboost_info/
+
+# OS
+.DS_Store
+Thumbs.db

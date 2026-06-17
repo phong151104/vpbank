@@ -52,6 +52,6 @@ def disp(col):
 
 def load_data(root: Path = ROOT):
     """Trả về (train, test). Cột giữ nguyên tên gốc 'ID','1'..'86'."""
-    train = pd.read_csv(Path(root) / "train_data.txt")
-    test  = pd.read_csv(Path(root) / "test_data.txt")
+    train = pd.read_csv(Path(root) / "data" / "train_data.txt")
+    test  = pd.read_csv(Path(root) / "data" / "test_data.txt")
     return train, test
