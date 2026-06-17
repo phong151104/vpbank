@@ -8,6 +8,7 @@ vọng nhất (**Nhiệm vụ 1**) và phân tích **vì sao** khách mua để 
 > (đánh giá bằng `hits@20%` / `mean_hits_over_k`, không dùng accuracy).
 
 > 📄 **Báo cáo kỹ thuật chi tiết (từng bước):** [docs/SOLUTION.md](docs/SOLUTION.md)
+> · **Giải thích mô hình & insight chiến dịch (Nhiệm vụ 2):** [docs/MODEL_INSIGHTS.md](docs/MODEL_INSIGHTS.md)
 
 ## Luồng chính — 3 notebook
 
@@ -85,25 +86,26 @@ python builders/build_train_notebook.py
 - **Đánh giá trung thực — grouped OOF:** `StratifiedGroupKFold` theo *profile* (bộ 85 đặc trưng
   giống nhau) để các dòng trùng không nằm cả ở train lẫn validation → không rò rỉ.
 - **Metric ổn định:** `mean_hits_over_k` (trung bình hits ở top 15–25%) + báo cáo **SE**.
-- **Chọn feature:** consensus importance (7 phương pháp) → quét **K∈[15,30] như hyperparameter**
-  trong Optuna.
+- **Chọn feature:** consensus importance (7 phương pháp) → **khử đa cộng tuyến trên ranking**
+  (|corr|>0.9, 125→80) → quét **K∈[10,30] như hyperparameter** trong Optuna.
 - **Chọn mô hình:** **1-SE rule** — ưu tiên mô hình **đơn giản hơn** nếu nằm trong 1 SE của bộ
   tốt nhất; dùng **1 mô hình đơn** (dễ giải thích cho Nhiệm vụ 2), không ensemble.
 - **Giải thích:** SHAP / hệ số mô hình → đầu vào Nhiệm vụ 2.
 
 ## Kết quả hiện tại
 
-| Mô hình | K | grouped OOF `meanK` | `hits@20%` | AUC |
+| Mô hình | K | grouped OOF `meanK` ± SE | `hits@20%` | AUC |
 |---|---|---|---|---|
-| **CatBoost** (chốt) | 17 | **192.96 ± 1.26** | **195** / 348 | 0.786 |
-| LightGBM | 26 | 187.0 | 190 | 0.780 |
-| LDA | 18 | 183.3 | 185 | 0.757 |
-| XGBoost | 16 | 182.4 | 188 | 0.772 |
-| LogReg | 30 | 179.8 | 183 | 0.765 |
+| **LightGBM** (chốt) | 14 | **195.12 ± 0.98** | **206** / 348 | 0.784 |
+| XGBoost | 17 | 192.60 ± 0.95 | 199 | 0.789 |
+| CatBoost | 14 | 190.32 ± 0.93 | 191 | 0.790 |
+| LDA | 30 | 182.60 ± 0.14 | 186 | 0.758 |
+| LogReg | 29 | 181.36 ± 0.52 | 184 | 0.765 |
 
-→ Sản phẩm nộp: **`submission_800.txt`** (CatBoost K=17). Kỳ vọng ~130 người mua trong 800 chọn
-(so với ~48 nếu chọn ngẫu nhiên).
+→ Sản phẩm nộp: **`submission_800.txt`** (LightGBM K=14, trên `consensus_rank` đã khử đa cộng
+tuyến). Lift ~2,96× → kỳ vọng ~141 người mua trong 800 chọn (so với ~48 nếu ngẫu nhiên).
 
-> **Ghi chú trung thực:** con số `hits@20%=195` nên coi là **cận trên** — có optimism nhẹ do
-> (a) chọn max trên 5 mô hình và (b) xếp hạng feature (`consensus_rank`) tính trên toàn train
-> (feature-selection ngoài vòng CV). Số trên tập nhãn ẩn nhiều khả năng thấp hơn một chút.
+> **Ghi chú trung thực:** `hits@20%=206` nên coi là **cận trên** (optimism do chọn feature trên
+> toàn train + chọn max trên 5 mô hình). **Đã đo bằng nested CV:** optimism ≈ vài điểm, nhưng ưu
+> thế của luồng dedupe **sống sót qua nested** (161.9 > 159.1) → cải thiện là thật. Số trên tập
+> nhãn ẩn vẫn sẽ thấp hơn ~vài điểm.

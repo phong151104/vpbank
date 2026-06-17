@@ -244,7 +244,7 @@ print(); print(pd.DataFrame(cmp).set_index("bộ"))''')
 # ----------------------------------------------------------------------------
 md('''## 6. Importance đa phương pháp → xếp hạng đồng thuận
 
-Filter (MI, ANOVA F, point-biserial) + embedded (L1-logistic, LightGBM gain) + permutation (grouped) + SHAP. Gộp thành **consensus rank** (trung bình thứ hạng).''')
+Filter (MI, ANOVA F, point-biserial) + embedded (L1-logistic, LightGBM gain) + permutation (grouped) + SHAP. Gộp thành **consensus rank** (trung bình thứ hạng), rồi **khử đa cộng tuyến ngay trên ranking** (|corr|>0.9 → giữ feature consensus cao hơn). Đây là `consensus_rank` **bàn giao** cho training.''')
 code('''from sklearn.feature_selection import f_classif
 from sklearn.preprocessing import StandardScaler
 from sklearn.inspection import permutation_importance
@@ -286,6 +286,24 @@ for m in METHODS:
 CONSENSUS = imp.sort_values("consensus", ascending=False)
 CONS_ORDER = CONSENSUS.index.tolist()
 
+# ===== KHỬ ĐA CỘNG TUYẾN ngay trên ranking consensus =====
+# Duyệt consensus từ cao -> thấp; chỉ giữ feature nếu KHÔNG |corr|>ngưỡng với feature đã-giữ
+# nào (vốn consensus cao hơn) -> trong cụm đa cộng tuyến giữ đúng "thằng consensus cao hơn".
+# consensus_rank bàn giao cho training là bản ĐÃ dedupe này.
+DEDUP_THRESH = 0.90
+CONS_ORDER_FULL = list(CONS_ORDER)
+_cabs = Xtr[CONS_ORDER_FULL].corr(method="spearman").abs().fillna(0.0)
+_kept = []
+for _c in CONS_ORDER_FULL:
+    if all(_cabs.loc[_c, _k] <= DEDUP_THRESH for _k in _kept):
+        _kept.append(_c)
+CONS_ORDER = _kept
+_drop = [c for c in CONS_ORDER_FULL if c not in set(CONS_ORDER)]
+print(f"[DEDUPE |corr|>{DEDUP_THRESH}] consensus {len(CONS_ORDER_FULL)} -> {len(CONS_ORDER)} (bỏ {len(_drop)})")
+for _c in _drop[:25]:
+    _hi = _cabs.loc[_c, CONS_ORDER].idxmax()
+    print(f"   bỏ [{disp(_c)}]  ~ trùng  [{disp(_hi)}]  (|corr|={_cabs.loc[_c, _hi]:.2f})")
+
 # Bảng FULL: TẤT CẢ feature × ĐỦ 7 phương pháp -> CSV (mở bằng Excel, utf-8-sig)
 full_tbl = CONSENSUS.copy()
 full_tbl.insert(0, "feature", [disp(c) for c in full_tbl.index])
@@ -310,8 +328,8 @@ axes[1].set_title("Toàn bộ %d feature — đường cong importance (elbow)" 
 axes[1].set_xlabel("Thứ hạng feature"); axes[1].set_ylabel("Consensus")
 plt.tight_layout(); savefig("FE05_consensus_importance"); plt.show()''')
 
-code('''# Hiệu năng grouped OOF theo SỐ FEATURE giữ lại (consensus top-K) -> để CHỐT số lượng
-Ks = [5, 10, 15, 20, 25, 30, 40, 50, 60, 75, 90, 110, len(FULL)]
+code('''# Hiệu năng grouped OOF theo SỐ FEATURE giữ lại (consensus ĐÃ DEDUPE, top-K) -> để CHỐT số lượng
+Ks = sorted({k for k in [5, 10, 15, 20, 25, 30, 40, 50, 60, 75, 90, 110, len(CONS_ORDER)] if k <= len(CONS_ORDER)})
 rows = []
 for K in Ks:
     d = eval_set(CONS_ORDER[:K])
@@ -328,7 +346,7 @@ ax.plot(perfK["K"], perfK["meanK_LightGBM"], marker="s", label="LightGBM", color
 ax.plot(perfK["K"], perfK["meanK_avg"], marker="D", lw=2.3, label="TB 2 mô hình", color="#d1495b")
 ax.axvline(best["K"], color="black", ls="--", lw=1, label=f"tốt nhất K={int(best['K'])}")
 ax.axvline(parsi, color="blue", ls=":", lw=1.5, label=f"tiết kiệm K={parsi}")
-ax.set_title("Hiệu năng grouped OOF theo số feature (consensus top-K) — DÙNG ĐỂ CHỐT K")
+ax.set_title("Hiệu năng grouped OOF theo số feature (consensus ĐÃ KHỬ ĐA CỘNG TUYẾN, top-K) — DÙNG ĐỂ CHỐT K")
 ax.set_xlabel("Số feature giữ lại (K)"); ax.set_ylabel("mean hits @ K=15..25%"); ax.legend(fontsize=8)
 plt.tight_layout(); savefig("FE08_perf_vs_K"); plt.show()
 print(perfK.round(1).to_string(index=False))

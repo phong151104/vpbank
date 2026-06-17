@@ -1,0 +1,62 @@
+@page {
+  size: A4;
+  margin: 11mm 12mm;
+}
+
+html,
+body {
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 11px;
+  line-height: 1.32;
+  color: #111;
+}
+
+body {
+  max-width: none;
+}
+
+h1 {
+  font-size: 19px;
+  line-height: 1.16;
+  margin: 0 0 8px;
+}
+
+h2 {
+  font-size: 13.5px;
+  line-height: 1.2;
+  margin: 10px 0 6px;
+  padding-bottom: 3px;
+  border-bottom: 1px solid #ddd;
+}
+
+p {
+  margin: 4px 0;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 6px 0 8px;
+  font-size: 9.8px;
+  line-height: 1.24;
+}
+
+th,
+td {
+  border: 1px solid #d8d8d8;
+  padding: 3px 4px;
+  vertical-align: top;
+}
+
+th {
+  background: #f2f2f2;
+  font-weight: 700;
+}
+
+code {
+  font-size: 0.9em;
+}
+
+strong {
+  font-weight: 700;
+}

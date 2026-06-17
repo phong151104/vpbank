@@ -98,11 +98,11 @@ Mục tiêu: hiểu dữ liệu, phát hiện cạm bẫy, định hướng FE &
 **Các bước & phát hiện chính:**
 
 1. **Chất lượng dữ liệu** — không thiếu giá trị, đúng dải codebook, không cột hằng số.
-2. **Dòng trùng (mục 2b)** — phát hiện **651 dòng trùng** trên 85 đặc trưng (510 nhóm). Trong đó
-   **49 nhóm "mâu thuẫn nhãn"** (cùng đặc trưng nhưng vừa có người mua vừa không).
-   → **Quyết định: KHÔNG drop.** Đó là khách hàng thật; nhóm mâu thuẫn mang **xác suất mua theo
-   profile** — chính là tín hiệu xếp hạng. Thay vào đó dùng **GroupKFold theo profile** để đánh
-   giá trung thực.
+2. **Dòng trùng (mục 2b)** — **651 dòng trùng** trên 85 đặc trưng, thuộc **510 nhóm** (405 nhóm 2
+   người, 77 nhóm 3, 21 nhóm 4, 6 nhóm 5, 1 nhóm 6); chỉ **5.171 hồ sơ duy nhất / 5.822**. Trong đó
+   **49 nhóm "mâu thuẫn nhãn"** (cùng đặc trưng nhưng vừa có người mua vừa không — sai số Bayes).
+   → **Quyết định: KHÔNG drop** (drop bỏ 32/348 người mua, méo xác suất profile). Dùng **GroupKFold
+   theo profile** để đánh giá trung thực (dòng cùng profile không nằm cả train lẫn validation).
 3. **Biến mục tiêu** — mất cân bằng nặng (~6%) → khẳng định khung **ranking top-20%**.
 4. **Univariate / Bivariate / Multivariate** — phân phối; tương quan với nhãn; phát hiện cặp
    *Đóng phí ↔ Số HĐ* cùng loại BH **trùng lặp mạnh** (đa cộng tuyến).
@@ -128,49 +128,88 @@ Mục tiêu: hiểu dữ liệu, phát hiện cạm bẫy, định hướng FE &
 Notebook **độc lập**, không train mô hình cuối; chỉ tạo + xếp hạng + chọn đặc trưng, rồi **bàn
 giao**. Mọi quyết định chấm bằng **grouped OOF** với 2 mô hình tham chiếu (LogReg + LightGBM).
 
-### 5.1. Tạo đặc trưng nghiệp vụ (`build_features_v2`)
-Từ 85 đặc trưng gốc, tạo thêm **~40 đặc trưng** (tất cả row-wise / target-free), gồm các nhóm:
+### 5.1. Tạo đặc trưng nghiệp vụ (`build_features_v2`): 85 → 125
+Từ 85 đặc trưng gốc, tạo thêm **40 đặc trưng** (tất cả row-wise / target-free), gồm 8 nhóm:
 
-| Nhóm | Ví dụ | Ý nghĩa |
-|---|---|---|
-| **Tổng hợp gốc (v1)** | `agg_total_contrib`, `agg_total_number`, `agg_n_contrib_types`, `agg_n_number_types`, `agg_car_related` | tổng phí / tổng số HĐ / **số loại BH đang sở hữu** / mức BH liên quan xe |
-| **Cờ sở hữu (flag)** | `flag_co_xe`, `flag_chay_no`, `flag_nhan_tho`, `flag_tai_san`, `flag_tn_ca_nhan`, `flag_thuyen`, `flag_so_hd_oto`, `flag_da_dang_bh` | có/không từng loại BH lõi (tín hiệu ~ bằng mức ordinal — xem EDA 10c) |
-| **Gộp theo lĩnh vực BH** | `dom_vehicle_*`, `dom_property_*`, `dom_life_health_*`, `dom_agriculture_*`, `dom_recreation_*`, `dom_liability_*` | tổng phí & số loại theo 6 lĩnh vực |
-| **Tỉ lệ / chuẩn hoá** | `ratio_vehicle_share`, `ratio_lifehealth_share`, `ratio_contrib_per_policy`, `ratio_ntypes_balance` | cơ cấu danh mục BH |
-| **Chỉ số socio** | `idx_income_level`, `idx_affluence`, `idx_education`, `idx_family`, `idx_religiosity` | tổng hợp nhân khẩu |
-| **Tương tác** | `ix_pp_x_car`, `ix_income_x_pp`, `ix_affluence_x_owns`, `ix_age_x_maintype` | giao thoa có ý nghĩa |
-| **Frequency-encode** | `freq_1`, `freq_5` | tần suất subtype/main type (tính trên train, **target-free**) |
+| Nhóm | Số | Ví dụ | Ý nghĩa |
+|---|---|---|---|
+| **Tổng hợp gốc (v1)** | 5 | `agg_total_contrib`, `agg_n_contrib_types`, `agg_n_number_types`, `agg_car_related` | tổng phí / **số loại BH đang sở hữu** / mức BH liên quan xe |
+| **Cờ sở hữu (flag)** | 8 | `flag_co_xe`, `flag_chay_no`, `flag_nhan_tho`, `flag_tai_san`, `flag_so_hd_oto`, `flag_da_dang_bh` | có/không từng loại BH lõi (tín hiệu ~ bằng mức ordinal — EDA 10c) |
+| **Gộp theo lĩnh vực BH** | 6+6 | `dom_vehicle_*`, `dom_property_*`, `dom_life_health_*`, … (×{contrib, ntypes}) | tổng phí & số loại theo 6 lĩnh vực |
+| **Tỉ lệ / chuẩn hoá** | 4 | `ratio_vehicle_share`, `ratio_contrib_per_policy`, `ratio_ntypes_balance` | cơ cấu danh mục BH |
+| **Chỉ số socio** | 5 | `idx_income_level`, `idx_affluence`, `idx_education`, `idx_family`, `idx_religiosity` | tổng hợp nhân khẩu |
+| **Tương tác** | 4 | `ix_pp_x_car`, `ix_income_x_pp`, `ix_affluence_x_owns`, `ix_age_x_maintype` | giao thoa có ý nghĩa |
+| **Frequency-encode** | 2 | `freq_1`, `freq_5` | tần suất subtype/main type (target-free) |
 
-→ **85 (raw) + ~40 (v2) = 125 đặc trưng** ("full v2").
+→ **85 (raw) + 40 (v2) = 125 đặc trưng** ("full v2"). Tác động (grouped OOF, 2 mô hình tham chiếu):
 
-### 5.2. So sánh cách mã hoá biến cardinal cao (subtype, main type)
-3 cách cho cột 1 & 5: **TargetEncoder** (CV-safe) / **WOE** (CV-safe) / **frequency** (target-free)
-→ chấm bằng grouped OOF, chọn cách tốt nhất. (TargetEncoder dùng làm mặc định trong pipeline.)
+| Bộ | #cột | LogReg `meanK` | LightGBM `meanK` |
+|---|---|---|---|
+| raw (85) | 85 | 163,2 | 163,2 |
+| eng v1 | 98 | 171,2 | 166,8 |
+| **full v2** | 125 | **177,2** | 164,2 |
+
+→ FE v2 nâng rõ cho **mô hình tuyến tính** (163 → 177); cây ít hưởng lợi hơn (chịu được trùng lặp).
+
+### 5.2. So sánh mã hoá biến cardinal cao (subtype col 1, main type col 5)
+3 cách (grouped OOF, LightGBM):
+
+| Encoding | `hits@20%` | `meanK` | AUC |
+|---|---|---|---|
+| **TargetEncoder** (mặc định) | 164 | 164,2 | 0,743 |
+| WOE | 159 | 159,8 | 0,744 |
+| frequency | 163 | 162,4 | 0,745 |
+
+→ Chênh nhỏ; chọn **TargetEncoder** (fit theo fold trong pipeline → CV-safe).
 
 ### 5.3. Audit chất lượng + khử đa cộng tuyến
-- **Near-zero variance** (≥99% một giá trị) → gắn cờ cân nhắc loại.
-- **Tương quan đa phương pháp:** Spearman/Pearson, **Cramér's V** (categorical), point-biserial/MI
-  với target.
-- **Khử đa cộng tuyến 2 tầng:** (a) **gom cụm** |corr|>0,9 giữ đại diện (MI cao nhất); (b)
-  **VIF prune** cho khối liên tục. So grouped OOF trước/sau để chắc không tụt hiệu năng.
+- **Near-zero variance** (≥99% một giá trị): **20 cột** (vd ván lướt sóng, xe tải lớn, máy nông
+  nghiệp — gần như toàn 0) → gắn cờ.
+- **Đa cộng tuyến (gom cụm |corr|>0,9):** **29 cụm** có >1 thành viên → gộp giảm **45 cột** (125→80);
+  **VIF prune** loại thêm **2** (Tổng phí xe cộ, Số loại xe cộ) → 78. So grouped OOF:
+  full 170,7 → after-corr-cluster 169,2 → after-VIF 165,6 (gần như không tụt; VIF tụt nhẹ).
+- *Cặp dư thừa điển hình:* Đóng phí ↔ Số HĐ cùng loại BH; subtype ↔ main type (|corr|=0,99);
+  Sở hữu nhà ↔ Nhà thuê (1,00); BHYT tư nhân ↔ BHYT quốc gia (1,00).
 
-### 5.4. Xếp hạng importance đa phương pháp → `consensus_rank`
-Tính importance bằng **7 phương pháp** rồi lấy **trung bình thứ hạng** (consensus) + độ ổn định
-(`rank_std`):
-1. Mutual Information 2. ANOVA F 3. point-biserial 4. L1-logistic |coef| 5. LightGBM gain
-6. Permutation (grouped) 7. SHAP.
-→ Xuất `outputs/feature_importance_full.csv` (125 feature × 7 phương pháp). Quét **perf theo K**
-(`outputs/perf_vs_K.csv`) để thấy vùng K hiệu quả.
+### 5.4. Xếp hạng importance đa phương pháp → `consensus_rank` (+ khử đa cộng tuyến)
+Importance bằng **7 phương pháp** → trung bình thứ hạng (consensus) + độ ổn định `rank_std`:
+**MI, ANOVA F, point-biserial, L1-logistic, LightGBM gain, Permutation (grouped), SHAP**
+→ `outputs/feature_importance_full.csv` (125 feature × 7 phương pháp; chênh consensus max 123,4 vs
+min 17,1; top-10 TB 105,6 vs bottom-10 24,5).
 
-### 5.5. Chọn lọc & kiểm định
-- So nhiều bộ ứng viên: full v2 / after-VIF / consensus top-K / **RFECV (grouped)** / L1-selected
-  / **stability core** → chọn theo `meanK` (hoà → ít cột → AUC).
-- **Kiểm leakage:** đặc trưng row-wise tái lập khớp; **drift PSI** train↔test thấp (ổn định).
+Sau đó **khử đa cộng tuyến NGAY trên ranking** (greedy: duyệt consensus cao→thấp, bỏ feature nào
+|corr|>0,9 với feature đã-giữ → **giữ "thằng consensus cao hơn"**): **125 → 80 feature (bỏ 45)**.
+Ví dụ bỏ: *Số HĐ ô tô* ~ *Đóng phí ô tô* (0,95); *subtype* ~ *main type* (0,99); *Sở hữu nhà* ~
+*Nhà thuê* (1,00). → **Đây là `consensus_rank` bàn giao cho training.**
+
+**Hiệu năng grouped OOF theo K** (consensus đã dedupe, TB 2 mô hình — `outputs/perf_vs_K.csv`):
+
+| K | 5 | 10 | **15** | 20 | 25 | 30 | 40 | 60 | 80 |
+|---|---|---|---|---|---|---|---|---|---|
+| `meanK_avg` | 164,6 | 171,3 | **175,7** | 172,5 | 170,7 | 170,5 | 167,3 | 170,1 | 168,7 |
+
+→ Đỉnh **K=15**, vùng tốt **K≈10–20** → chốt dải tune `K∈[10,30]`.
+
+### 5.5. Chọn lọc đặc trưng (chẩn đoán) + kiểm định leakage
+So các bộ ứng viên (grouped OOF, TB 2 mô hình):
+
+| Bộ | #cột | `meanK` | hits_LGB | AUC |
+|---|---|---|---|---|
+| **RFECV (grouped)** | 45 | **179,8** | 166 | 0,766 |
+| stability core (≥0,6) | 60 | 175,9 | 173 | 0,761 |
+| L1-selected | 72 | 172,6 | 164 | 0,754 |
+| consensus top-20 | 20 | 172,5 | 174 | 0,756 |
+| full v2 | 125 | 170,7 | 164 | 0,751 |
+
+> **Lưu ý:** training **KHÔNG** dùng `final_selected` (RFECV-45) mà dùng **`consensus_rank` (80 đã
+> dedupe)** rồi **tự tune K** — linh hoạt hơn cố định 1 bộ. Phần chọn-lọc này giữ vai trò *chẩn đoán*.
+- **Kiểm leakage:** đặc trưng row-wise tái lập khớp (`True`); **PSI** train↔test max **0,0052**
+  (<0,1 → **không drift**); test **0 NaN**.
 
 ### 5.6. Bàn giao (`outputs/feature_set.json`)
-Lưu nhiều "view": `raw`, `all_engineered`, `full_v2`, `after_multicollinearity`,
-**`consensus_rank`** (125 feature xếp hạng — *cái mà training dùng*), `final_selected`,
-`final_name`. Kèm `train_fe.parquet` / `test_fe.parquet`.
+Lưu nhiều "view": `raw` (85), `all_engineered` (40), `full_v2` (125), `after_multicollinearity` (78),
+**`consensus_rank` (80 — đã xếp hạng + khử đa cộng tuyến, *cái training dùng*)**, `final_selected`
+(RFECV-45, chẩn đoán). Kèm `train_fe.parquet` / `test_fe.parquet`.
 
 ---
 
@@ -180,18 +219,31 @@ Triết lý: **tune kỹ + đánh giá trung thực + chọn 1 mô hình đơn**
 **không ensemble**.
 
 ### 6.1. Thiết lập
-- `POOL = load_feature_set("consensus_rank")` (125 feature đã xếp hạng).
+- `POOL = load_feature_set("consensus_rank")` (**80 feature — đã xếp hạng + khử đa cộng tuyến**).
 - `GROUPS = profile_groups(Xtr)` → grouped OOF.
 - 5 mô hình: **LightGBM, XGBoost, CatBoost, LogReg, LDA**. 40 trials/model.
 
 ### 6.2. Tuning — **K (số feature) là một hyperparameter**
-Mỗi mô hình một study Optuna. **Mỗi trial chọn `K∈[15,30]`** (dùng `POOL[:K]`) **+ tham số mô
+Mỗi mô hình một study Optuna. **Mỗi trial chọn `K∈[10,30]`** (dùng `POOL[:K]`) **+ tham số mô
 hình**, chấm bằng **grouped OOF `mean_hits_over_k`**:
 - Booster (LightGBM/XGBoost/CatBoost): có **early stopping**, và `inner_es=True` — early-stop
   trên một **inner split tách từ train-fold** (không đụng val-fold được chấm).
 - Tuyến tính (LogReg/LDA): tune C/penalty/shrinkage, có StandardScaler trong pipeline.
 
 → Việc "chọn bao nhiêu feature" trở thành quyết định **được tối ưu có kiểm soát**, không chọn tay.
+
+**Kết quả tuning (best K + objective `meanK` 1-split + tham số chính):**
+
+| Mô hình | best K | `meanK`(obj) | Tham số chính | Thời gian |
+|---|---|---|---|---|
+| LightGBM | **14** | 189,2 | lr 0,046 · num_leaves 57 · depth 11 · min_child 100 · `spw`=1,0 | 76s |
+| XGBoost | 17 | 192,4 | lr 0,040 · depth 7 · min_child_w 10 · `spw`=3,97 | 64s |
+| CatBoost | 14 | 193,4 | lr 0,098 · depth 4 · l2 19,6 | 156s |
+| LogReg | 29 | 182,6 | C 0,35 · L1 · class_weight None | 68s |
+| LDA | 30 | 182,8 | shrinkage 0,26 | 73s |
+
+*(Đáng chú ý: 3/5 model chọn K nhỏ **14–17** — khớp đỉnh perf-vs-K ở §5.4; `spw` (cân bằng lớp)
+được tune tự do, LightGBM/CatBoost chọn ~không đè trọng số → xếp hạng ít phụ thuộc resampling.)*
 
 ### 6.3. Đánh giá trung thực + chọn cuối (**1-SE rule**)
 Với mỗi mô hình đã tune: chạy grouped OOF **lặp 5 seed** → `mean_hits_over_k` ± **SE**, kèm
@@ -206,105 +258,52 @@ test → lấy **top 800 ID** → `submission_800.txt`. Giải thích bằng **S
 
 ## 7. Kết quả
 
-Đánh giá **grouped OOF** (trung thực) trên train:
+Đánh giá lặp **5 seed** (grouped OOF trung thực, `K` đã tune; sắp theo `meanK`):
 
-| Mô hình | K | `mean_hits_over_k` | `hits@20%` | AUC | Chọn |
+| Mô hình | K | `mean_hits_over_k` ± SE | `hits@20%` | AUC | Chọn |
 |---|---|---|---|---|---|
-| **CatBoost** | **17** | **192,96 ± 1,26** | **195 / 348** | 0,786 | ✅ |
-| LightGBM | 26 | 187,0 | 190 | 0,780 | |
-| LDA | 18 | 183,3 | 185 | 0,757 | |
-| XGBoost | 16 | 182,4 | 188 | 0,772 | |
-| LogReg | 30 | 179,8 | 183 | 0,765 | |
+| **LightGBM** | **14** | **195,12 ± 0,98** | **206 / 348** | 0,784 | ✅ |
+| XGBoost | 17 | 192,60 ± 0,95 | 199 | 0,789 | |
+| CatBoost | 14 | 190,32 ± 0,93 | 191 | 0,790 | |
+| LDA | 30 | 182,60 ± 0,14 | 186 | 0,758 | |
+| LogReg | 29 | 181,36 ± 0,52 | 184 | 0,765 | |
 
-**Mô hình chốt: CatBoost, K = 17 đặc trưng** (top-17 theo consensus). 
-- `hits@20% = 195/348` trên train ⇒ **lift ≈ 2,8x** so với ngẫu nhiên.
-- Kỳ vọng trong 800 ID chọn ra: **~130 người mua** (so với ~48 nếu chọn ngẫu nhiên) — *xem
-  cảnh báo "cận trên" ở §9*.
-- Sản phẩm nộp: **`submission_800.txt`** (800 ID, mỗi dòng 1 ID).
+**Mô hình chốt: LightGBM, K = 14 đặc trưng** (top-14 của `consensus_rank` đã khử đa cộng tuyến).
+LightGBM **cao nhất** (195,12) **và** là model **duy nhất** nằm trong ngưỡng 1-SE (194,1) → **1-SE
+rule chọn dứt khoát**, không tranh cãi.
+- Tham số: `lr=0,046 · num_leaves=57 · max_depth=11 · min_child_samples=100 · scale_pos_weight=1,0`.
+- `hits@20% = 206/348` trên train ⇒ **lift ≈ 2,96×** so với ngẫu nhiên.
+- Kỳ vọng trong 800 ID: **~141 người mua** (so với ~48 nếu ngẫu nhiên) — *xem "cận trên" ở §9*.
+- Sản phẩm nộp: **`submission_800.txt`** (top-5 ID điểm cao nhất: `1468, 2844, 1243, 166, 2622`).
 
----
-
-## 8. Nhiệm vụ 2 — Giải thích cho chiến dịch
-
-Yếu tố đẩy khả năng mua AIA cao nhất (đồng thuận giữa AUC đơn biến, SHAP, consensus importance):
-
-1. **Đã sở hữu bảo hiểm ô tô** (đóng phí & số HĐ ô tô) — tín hiệu mạnh nhất; người đã quen mua
-   BH xe dễ mua chéo.
-2. **Sức mua & thu nhập cao** (hạng sức mua, thu nhập TB).
-3. **Độ rộng danh mục BH** — càng sở hữu nhiều loại BH càng dễ mua thêm (đơn điệu).
-4. **Bảo hiểm cháy nổ / tài sản**, và một số **phân khúc nhân khẩu** (main type/subtype) có tỉ lệ
-   mua vượt trội.
-
-**Khuyến nghị hành động:** ưu tiên nhắm nhóm **đã có BH ô tô + sức mua cao + đang sở hữu nhiều
-loại BH**; dùng `outputs/test_scores.csv` (điểm + thứ hạng 4.000 khách) để chia tầng chiến dịch.
+> *So phương án trước (CatBoost K=17, **full 125 feature**: meanK 192,96 / hits 195): khử đa cộng
+> tuyến + K thấp giúp **LightGBM/XGBoost bật lên** (LightGBM 187,0→195,1), CatBoost hơi giảm
+> (192,96→190,3) — đúng kỳ vọng (cây vốn chịu được trùng lặp; dedupe lợi cho model nhạy với nó).*
 
 ---
 
-## 9. Đánh giá trung thực & hạn chế
+> Chi tiết đầy đủ: **[docs/MODEL_INSIGHTS.md](MODEL_INSIGHTS.md)**. Tóm tắt:
 
-**Điểm mạnh (đã làm đúng):**
-- ✅ **Grouped OOF** xử lý đúng rò rỉ do dòng trùng profile.
-- ✅ **Encoder fit theo fold** (TargetEncoder/WOE) — không rò rỉ nhãn vào val-fold.
-- ✅ Đặc trưng **row-wise / target-free** — parquet không bị leak.
-- ✅ **K là hyperparameter** (không chọn tay), metric **ổn định** (`mean_hits_over_k` ± SE),
-  **1-SE rule** chống winner's-curse.
-- ✅ Test **không lệch** train (adversarial AUC≈0,50) → OOF là proxy hợp lệ.
+**A. Vì sao — 14 yếu tố từ SHAP** (mô hình cuối, `figures/TR04_explain.png`), gộp 3 nhóm:
+1. **"Đã là người mua bảo hiểm"** (mạnh nhất): Đóng phí BH ô tô, Tổng phí BH khác, Đóng phí cháy nổ,
+   Số loại BH đang có, Tỉ trọng phí BH xe, Đóng phí BH thuyền → **đẩy ⬆️**.
+2. **"Sung túc"**: Thu nhập×sức mua, Thu nhập TB, Học vấn cao → ⬆️; Thu nhập <30k, Học vấn thấp → kéo ⬇️.
+3. **"Nhân khẩu"**: Nhóm KH chính, Đã kết hôn, Quản lý cấp trung.
 
-**Hạn chế cần biết — con số `195` nên coi là CẬN TRÊN:**
-1. **Optimism do chọn feature ngoài vòng CV (chính):** `consensus_rank` được tính trên **target
-   toàn train** (cả 7 phương pháp importance dùng nhãn đầy đủ). Khi training chọn `POOL[:K]` rồi
-   chấm grouped OOF, *thứ tự feature* đã "nhìn" nhãn của các dòng sẽ làm validation → OOF lạc quan
-   về **chọn feature nào** (không chỉ chọn bao nhiêu). *Mức độ ở đây nhỏ* (chỉ 125 ứng viên, tín
-   hiệu thật, consensus ổn định, pha loãng qua fold) nhưng **không bằng 0**. → Bản "không
-   leakage" của FE notebook đúng cho *encoding/fold*, chưa tính bước *chọn feature*.
-2. **Optimism do chọn max trên 5 mô hình** — báo cáo `meanK` của model thắng là max-of-5 → hơi
-   lạc quan (notebook đã ghi chú "coi như cận trên").
-3. **1 mô hình đơn vs ensemble:** chọn 1 model (CatBoost) là quyết định *có chủ đích* (sạch, dễ
-   giải thích, parsimonious). Nhưng model-đơn-tốt-nhất-trên-OOF dễ dính winner's-curse hơn
-   ensemble; **rank-average top 2–3** *có thể* ổn định hơn chút trên test ẩn (đánh đổi với tính
-   diễn giải).
+**B. Nhắm AI — tỉ lệ mua theo phân khúc** (mốc nền **5,98%**):
 
-→ **Số thật trên 800 ID ẩn nhiều khả năng thấp hơn 195 một chút.** Submission vẫn **hợp lệ**;
-chỉ là *ước lượng tự chấm* hơi cao.
+| Phân khúc | % mua | Bội số nền |
+|---|---|---|
+| **Có đóng phí BH ô tô** (vs không 2,5%) | **9,3%** | 3,7× |
+| Sở hữu **≥3 loại BH** (3/4/5/6 loại) | 11–15% | ~2–2,5× |
+| Main type **"Người vươn lên"** | 13,1% | 2,2× |
+| Subtype **"Middle class families"** | 15,0% | 2,5× |
+| Subtype "Affluent young families" | 14,4% | 2,4× |
 
-**Hướng siết thêm (tuỳ chọn):** đưa bước xếp hạng feature **vào trong pipeline** (chọn top-K *bên
-trong* mỗi fold bằng 1 ranker nhanh) → OOF hết optimism; hoặc đo phần chênh nested-vs-hiện-tại để
-biết 195 thực rơi về đâu.
+**C. Khuyến nghị hành động:** ưu tiên giao của các tín hiệu — *khách **đã có BH ô tô** + **sở hữu
+≥3 loại BH** + phân khúc **sung túc/gia đình trẻ trung lưu***. Dùng `outputs/test_scores.csv` (điểm
++ thứ hạng 4.000 khách) chia tầng gọi (top 200 → 500 → 800). Góc tiếp cận: **bán chéo gói hợp nhất**.
 
----
+> ⚠️ SHAP là *attribution của mô hình* (tương quan), **không phải nhân quả** — đừng ép khách mua BH
+> ô tô để họ mua AIA; cả hai cùng phản ánh *khách có thói quen & khả năng mua bảo hiểm*.
 
-## 10. Cách tái lập
-
-**Môi trường:** Python (Anaconda), **giữ `numpy < 2`** (vd 1.26.4) cho tương thích
-pandas/matplotlib biên dịch cho numpy 1.x. Nếu cần SHAP, dùng bản `shap` hợp numpy 1.x.
-
-```bash
-pip install -r requirements.txt
-```
-
-**Chạy theo thứ tự** (FE phải chạy trước để sinh `outputs/feature_set.json`):
-```bash
-jupyter nbconvert --to notebook --execute --inplace feature_engineering.ipynb
-jupyter nbconvert --to notebook --execute --inplace training.ipynb
-# (eda.ipynb chạy độc lập, cho phân tích/biểu đồ)
-```
-
-**Regenerate notebook từ generator** (chạy từ thư mục gốc; sẽ ghi đè .ipynb, mất output cũ):
-```bash
-python builders/build_train_notebook.py
-```
-
-**Module dùng chung (`src/`):**
-
-| Module | Vai trò chính |
-|---|---|
-| `data.py` | nạp dữ liệu từ `data/`, metadata (tên cột tiếng Việt, bảng mã) |
-| `features.py` | `build_features_v2`, encoder CV-safe (TargetEncoder/WOE/frequency), khử đa cộng tuyến, `load_feature_set` |
-| `cv.py` | `profile_groups`, `oof_proba` (grouped OOF), `build_pipeline` |
-| `tune.py` | `tune_model_k` (K-as-hyperparameter, grouped, early stopping), `build_final_spec` |
-| `metrics.py` | `hits@20%`, `mean_hits_over_k`, lift, AUC, PR-AUC |
-| `models.py` | "model zoo" tham chiếu |
-| `predict.py` | refit toàn train → chấm test → top-800 |
-
-**Sản phẩm:** `submission_800.txt` (800 ID nộp bài) · `outputs/test_scores.csv` (điểm + thứ hạng
-4.000 khách) · `outputs/feature_set.json` · `figures/` (EDA / FE / TR).

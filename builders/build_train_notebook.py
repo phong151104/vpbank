@@ -8,9 +8,9 @@ def md(s):   cells.append(nbf.v4.new_markdown_cell(s))
 def code(s): cells.append(nbf.v4.new_code_cell(s))
 
 # ----------------------------------------------------------------------------
-md('''# VPINS — AIA Challenge: Training cuối (tuning + chọn số feature K=15–30)
+md('''# VPINS — AIA Challenge: Training cuối (tuning + chọn số feature K=10–30)
 
-Notebook training cuối: với pool đặc trưng đã xếp hạng (`consensus_rank`), **quét số feature K∈[15,30] như một hyperparameter trong Optuna** cho từng mô hình, rồi **chọn 1 mô hình đơn tốt nhất** (không ensemble) để sinh file nộp.
+Notebook training cuối: với pool đặc trưng đã xếp hạng + **khử đa cộng tuyến** (`consensus_rank` đã dedupe, ~80 feature), **quét số feature K∈[10,30] như một hyperparameter trong Optuna** cho từng mô hình, rồi **chọn 1 mô hình đơn tốt nhất** (không ensemble) để sinh file nộp.
 
 **Lá chắn chống chọn-lệch:**
 - Đánh giá **grouped OOF** (StratifiedGroupKFold theo profile) — không leakage.
@@ -42,7 +42,7 @@ sns.set_theme(style="whitegrid")
 FIG = Path("figures"); FIG.mkdir(exist_ok=True); Path("outputs").mkdir(exist_ok=True)
 def savefig(n): plt.savefig(FIG / (n + ".png"), dpi=150, bbox_inches="tight")
 
-K_RANGE = (15, 30)
+K_RANGE = (10, 30)
 N_TRIALS = 40
 N_REPEATS_FINAL = 5
 SEED = 42

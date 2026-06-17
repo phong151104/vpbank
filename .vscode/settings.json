@@ -1,0 +1,11 @@
+{
+  "markdown-pdf.format": "A4",
+  "markdown-pdf.margin.top": "8mm",
+  "markdown-pdf.margin.bottom": "8mm",
+  "markdown-pdf.margin.left": "9mm",
+  "markdown-pdf.margin.right": "9mm",
+  "markdown-pdf.styles": [
+    "docs/markdown-pdf-compact.css"
+  ],
+  "markdown-pdf.printBackground": true
+}
